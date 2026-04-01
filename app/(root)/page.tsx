@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import Image from "next/image";
 
@@ -26,7 +27,7 @@ async function Home() {
       {/* Hero/CTA Section */}
       <section className="hero-card">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex flex-col gap-4 max-w-2xl">
+          <div className="flex flex-col gap-4">
             <h1 className="text-3xl md:text-4xl font-bold text-white">
               Master Your Interviews with AI-Powered Practice
             </h1>

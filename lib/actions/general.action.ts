@@ -17,6 +17,9 @@ export async function createFeedback(params: CreateFeedbackParams) {
       )
       .join("");
 
+    // Get previous feedback for improvement calculation
+    const previousScore = await getPreviousFeedbackScore(userId, interviewId);
+
     const { object } = await generateObject({
       model: google("gemini-2.0-flash-001", {
         structuredOutputs: false,
@@ -24,6 +27,7 @@ export async function createFeedback(params: CreateFeedbackParams) {
       schema: feedbackSchema,
       prompt: `
         You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
+        
         Transcript:
         ${formattedTranscript}
 
@@ -33,10 +37,24 @@ export async function createFeedback(params: CreateFeedbackParams) {
         - **Problem-Solving**: Ability to analyze problems and propose solutions.
         - **Cultural & Role Fit**: Alignment with company values and job role.
         - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+        
+        Additionally, analyze the transcript for filler words:
+        - Count occurrences of: "um", "uh", "like" (when used as filler), "you know", "actually" (excessive use), "basically" (excessive use)
+        - Provide the total count and breakdown by type
+        
+        Based on the weakest categories, generate 3-5 practice questions that would help the candidate improve in those specific areas.
         `,
       system:
-        "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
+        "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories, detect speech patterns, and provide personalized practice recommendations.",
     });
+
+    // Calculate improvement percentage
+    let improvementPercentage = undefined;
+    if (previousScore !== null) {
+      improvementPercentage = Number(
+        (((object.totalScore - previousScore) / previousScore) * 100).toFixed(2)
+      );
+    }
 
     const feedback = {
       interviewId: interviewId,
@@ -46,6 +64,9 @@ export async function createFeedback(params: CreateFeedbackParams) {
       strengths: object.strengths,
       areasForImprovement: object.areasForImprovement,
       finalAssessment: object.finalAssessment,
+      fillerWords: object.fillerWords,
+      practiceQuestions: object.practiceQuestions,
+      improvementPercentage: improvementPercentage,
       createdAt: new Date().toISOString(),
     };
 
@@ -63,6 +84,33 @@ export async function createFeedback(params: CreateFeedbackParams) {
   } catch (error) {
     console.error("Error saving feedback:", error);
     return { success: false };
+  }
+}
+
+export async function getPreviousFeedbackScore(
+  userId: string,
+  currentInterviewId: string
+): Promise<number | null> {
+  try {
+    const querySnapshot = await db
+      .collection("feedback")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(2)
+      .get();
+
+    // Find the most recent feedback that's not for the current interview
+    for (const doc of querySnapshot.docs) {
+      const data = doc.data();
+      if (data.interviewId !== currentInterviewId) {
+        return data.totalScore || null;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error fetching previous feedback:", error);
+    return null;
   }
 }
 

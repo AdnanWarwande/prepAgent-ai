@@ -251,7 +251,7 @@
   }
 
   .auth-card {
-    @apply w-full max-w-md space-y-8;
+    @apply w-full space-y-8;
   }
 
   /* Main Layout */

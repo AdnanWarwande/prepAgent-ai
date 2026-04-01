@@ -11,6 +11,22 @@ interface Feedback {
   areasForImprovement: string[];
   finalAssessment: string;
   createdAt: string;
+  fillerWords?: {
+    count: number;
+    types: {
+      um: number;
+      uh: number;
+      like: number;
+      you_know: number;
+      actually: number;
+      basically: number;
+    };
+  };
+  practiceQuestions?: Array<{
+    category: string;
+    question: string;
+  }>;
+  improvementPercentage?: number;
 }
 
 interface Interview {
